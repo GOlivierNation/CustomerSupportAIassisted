@@ -7,6 +7,7 @@ services:
     # Use repo root (no rootDirectory) – app/ and requirements.txt are here
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    # Set each variable's value in Dashboard → Your Service → Environment (never commit secrets here)
     envVars:
       - key: OPENROUTER_API_KEY
         sync: false
