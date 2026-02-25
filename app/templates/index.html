@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Support — Customer Support AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/app.css">
+  <style>
+    .container { max-width: 600px; margin: 0 auto; padding: 1.5rem; }
+    .result { display: none; }
+    .result.visible { display: block; }
+    .result .ai-reply { margin-top: 0.5rem; white-space: pre-wrap; line-height: 1.55; }
+  </style>
+</head>
+<body class="app-shell">
+  <nav class="app-nav">
+    <a class="brand" href="/">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Support
+    </a>
+    <div class="nav-links">
+      <a href="/" class="active">Submit ticket</a>
+      <a href="/chat">Live chat</a>
+      <a href="/login">Log in</a>
+    </div>
+  </nav>
+
+  <main class="app-main home-page">
+    <div class="home-blur-bg" aria-hidden="true"></div>
+    <div class="container home-content">
+      <div class="page-hero">
+        <h1>Customer Support</h1>
+        <p class="subtitle">Submit a ticket for an AI-generated response, <a href="/chat">open a live chat</a>, or <a href="/login">log in</a> to view and manage your tickets.</p>
+      </div>
+
+      <div class="cta-grid">
+        <a href="/" class="cta-card active">
+          <span class="cta-title">Submit a ticket</span>
+          <span class="cta-desc">Get an instant AI response</span>
+        </a>
+        <a href="/chat" class="cta-card">
+          <span class="cta-title">Live chat</span>
+          <span class="cta-desc">Talk to support in real time</span>
+        </a>
+        <a href="/login" class="cta-card">
+          <span class="cta-title">My tickets</span>
+          <span class="cta-desc">View and manage your cases</span>
+        </a>
+      </div>
+
+      <div class="card">
+        <div class="card-header">New ticket</div>
+        <form id="ticket-form">
+          <label for="email">Your email</label>
+          <input type="email" id="email" name="email" placeholder="you@example.com" required>
+
+          <label for="subject">Subject</label>
+          <input type="text" id="subject" name="subject" placeholder="Brief summary of your issue" required>
+
+          <label for="description">Message</label>
+          <textarea id="description" name="description" placeholder="Describe your issue in detail…" required></textarea>
+
+          <button type="submit" id="submit-btn" class="btn btn-primary btn-block">Submit ticket & get AI response</button>
+        </form>
+      </div>
+
+      <div class="result" id="result">
+        <div class="highlights-panel">
+          <div class="highlight-row">
+            <div class="highlight-item">
+              <div class="highlight-label">Ticket ID</div>
+              <div class="highlight-value" id="ticket-id">—</div>
+            </div>
+            <div class="highlight-item">
+              <div class="highlight-label">Status</div>
+              <div class="highlight-value">In progress</div>
+            </div>
+          </div>
+          <div class="highlight-row">
+            <div class="highlight-item" style="flex:1;min-width:100%;">
+              <div class="highlight-label">AI response</div>
+              <div class="ai-reply" id="ai-reply"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="error-box" id="error"></div>
+    </div>
+  </main>
+
+  <script>
+    const form = document.getElementById('ticket-form');
+    const result = document.getElementById('result');
+    const ticketIdEl = document.getElementById('ticket-id');
+    const aiReplyEl = document.getElementById('ai-reply');
+    const errorEl = document.getElementById('error');
+    const submitBtn = document.getElementById('submit-btn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorEl.classList.remove('visible');
+      result.classList.remove('visible');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner"></span> Sending…';
+
+      const payload = {
+        customer_email: document.getElementById('email').value.trim(),
+        subject: document.getElementById('subject').value.trim(),
+        description: document.getElementById('description').value.trim(),
+      };
+
+      try {
+        const res = await fetch('/tickets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const text = await res.text();
+        let data = {};
+        if (text) {
+          try { data = JSON.parse(text); } catch { data = { detail: text.slice(0, 200) }; }
+        }
+        if (res.status === 405) throw new Error(data.detail || 'Please use the form to submit a ticket.');
+        if (!res.ok) throw new Error(data.detail || res.statusText || 'Request failed');
+        if (data.ticket_id == null && data.ticket_id !== 0) {
+          throw new Error(data.detail || 'Invalid response: no ticket ID returned.');
+        }
+
+        ticketIdEl.textContent = '#' + data.ticket_id;
+        aiReplyEl.textContent = data.ai_response ?? '';
+        result.classList.add('visible');
+        result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } catch (err) {
+        errorEl.textContent = err.message || 'Something went wrong. Please try again.';
+        errorEl.classList.add('visible');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit ticket & get AI response';
+      }
+    });
+  </script>
+</body>
+</html>

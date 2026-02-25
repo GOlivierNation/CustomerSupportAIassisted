@@ -1,0 +1,505 @@
+/* Design system inspired by Salesforce Service Cloud & Wolken ticketing */
+:root {
+  --bg: #0d1117;
+  --bg-elevated: #161b22;
+  --surface: #21262d;
+  --surface-hover: #30363d;
+  --border: #30363d;
+  --border-light: #21262d;
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --text-strong: #f0f6fc;
+  --accent: #238636;
+  --accent-hover: #2ea043;
+  --accent-subtle: rgba(35, 134, 54, 0.15);
+  --accent-blue: #58a6ff;
+  --accent-blue-hover: #79b8ff;
+  --accent-blue-subtle: rgba(88, 166, 255, 0.12);
+  --danger: #f85149;
+  --danger-subtle: rgba(248, 81, 73, 0.15);
+  --warning: #d29922;
+  --warning-subtle: rgba(210, 153, 34, 0.15);
+  --success: #3fb950;
+  --success-subtle: rgba(63, 185, 80, 0.15);
+  --radius: 8px;
+  --radius-lg: 12px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.35);
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* App shell – top nav (Salesforce-style utility bar) */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.app-nav .brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+  text-decoration: none;
+}
+
+.app-nav .brand:hover { color: var(--accent-blue); }
+
+.app-nav .brand svg {
+  width: 24px;
+  height: 24px;
+  opacity: 0.9;
+}
+
+.app-nav .nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.app-nav .nav-links a,
+.app-nav .nav-links button {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 0.85rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--text-muted);
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.app-nav .nav-links a:hover,
+.app-nav .nav-links button:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.app-nav .nav-links a.active {
+  color: var(--accent-blue);
+  font-weight: 500;
+}
+
+.app-main { flex: 1; }
+
+/* Home page blur background (support image) */
+.home-page {
+  position: relative;
+  min-height: calc(100vh - 52px);
+}
+
+.home-blur-bg {
+  position: absolute;
+  inset: 0;
+  background: url('https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1920') center / cover no-repeat;
+  filter: blur(12px);
+  transform: scale(1.08);
+  opacity: 0.4;
+  z-index: 0;
+}
+
+.home-blur-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(13, 17, 23, 0.75) 0%, var(--bg) 100%);
+  z-index: 1;
+}
+
+.home-page .home-content {
+  position: relative;
+  z-index: 2;
+}
+
+/* Cards & panels */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow);
+}
+
+.card-header {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+/* Highlights panel (Salesforce-style key info at a glance) */
+.highlights-panel {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  margin-top: 1rem;
+}
+
+.highlights-panel .highlight-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.highlights-panel .highlight-row:last-child { margin-bottom: 0; }
+
+.highlights-panel .highlight-item {
+  min-width: 0;
+}
+
+.highlights-panel .highlight-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.highlights-panel .highlight-value {
+  font-size: 0.95rem;
+  color: var(--text);
+  font-family: var(--font-mono);
+}
+
+/* Status badges (Wolken-style lifecycle) */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+}
+
+.badge-open { background: var(--accent-blue-subtle); color: #79b8ff; }
+.badge-in_progress { background: var(--warning-subtle); color: #e3b341; }
+.badge-resolved { background: var(--success-subtle); color: #7ee787; }
+.badge-priority { background: var(--surface-hover); color: var(--text-muted); }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem 1.1rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn-secondary {
+  background: var(--surface-hover);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--border);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btn-block { width: 100%; }
+
+/* Form controls */
+label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.4rem;
+}
+
+input, textarea, select {
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px var(--accent-blue-subtle);
+}
+
+textarea { min-height: 100px; resize: vertical; }
+
+/* Ticket list (Wolken/Salesforce list view) */
+.ticket-list { border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border); }
+
+.ticket-list-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.12s;
+}
+
+.ticket-list-item:last-child { border-bottom: none; }
+
+.ticket-list-item:hover { background: var(--surface-hover); }
+
+.ticket-list-item .ticket-id {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  min-width: 4.5rem;
+}
+
+.ticket-list-item .ticket-subject {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.ticket-list-item .ticket-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+/* Detail panel (right-hand or below list) */
+.detail-panel {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  margin-top: 1rem;
+}
+
+.detail-panel .detail-section {
+  margin-bottom: 1.25rem;
+}
+
+.detail-panel .detail-section:last-child { margin-bottom: 0; }
+
+.detail-panel .detail-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.detail-panel .detail-value {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  white-space: pre-wrap;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+/* Tabs (filter by status) */
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.tabs .tab {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.tabs .tab:hover { color: var(--text); background: var(--surface-hover); }
+
+.tabs .tab.active {
+  color: var(--text);
+  background: var(--surface);
+  font-weight: 500;
+}
+
+/* Utility */
+.spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent-blue);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+  margin-right: 0.4rem;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.error-box {
+  background: var(--danger-subtle);
+  border: 1px solid rgba(248, 81, 73, 0.4);
+  border-radius: var(--radius);
+  padding: 1rem;
+  color: #ff7b72;
+  font-size: 0.9rem;
+  display: none;
+}
+
+.error-box.visible { display: block; }
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.empty-state a { color: var(--accent-blue); text-decoration: none; }
+
+.empty-state a:hover { text-decoration: underline; }
+
+/* Hero / page header */
+.page-hero {
+  margin-bottom: 1.5rem;
+}
+
+.page-hero h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+  margin-bottom: 0.35rem;
+}
+
+.page-hero .subtitle {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.page-hero .subtitle a {
+  color: var(--accent-blue);
+  text-decoration: none;
+}
+
+.page-hero .subtitle a:hover { text-decoration: underline; }
+
+/* CTA cards (Support portal) */
+.cta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.cta-card {
+  display: block;
+  padding: 1rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.cta-card:hover {
+  border-color: var(--accent-blue);
+  background: var(--surface-hover);
+}
+
+.cta-card .cta-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.25rem; }
+
+.cta-card .cta-desc { font-size: 0.8rem; color: var(--text-muted); }
+
+.cta-card.active {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.cta-card.active .cta-desc { color: var(--text); }

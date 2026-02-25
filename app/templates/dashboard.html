@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My tickets — Customer Support</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/app.css">
+  <style>
+    .dashboard-wrap { max-width: 900px; margin: 0 auto; padding: 1.5rem; }
+    .header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem; }
+    .header h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; color: var(--text-strong); }
+    .detail { display: none; }
+    .detail.visible { display: block; }
+  </style>
+</head>
+<body class="app-shell">
+  <nav class="app-nav">
+    <a class="brand" href="/">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Support
+    </a>
+    <div class="nav-links">
+      <a href="/">Submit ticket</a>
+      <a href="/chat">Live chat</a>
+      <a href="/dashboard" class="active">My tickets</a>
+      <form method="post" action="/logout" style="display:inline;">
+        <button type="submit">Log out</button>
+      </form>
+    </div>
+  </nav>
+
+  <main class="app-main">
+    <div class="dashboard-wrap">
+      <div class="header">
+        <h1>My tickets</h1>
+        <a href="/" class="btn btn-secondary">New ticket</a>
+      </div>
+
+      <div class="error-box" id="error"></div>
+
+      <div class="tabs" id="tabs">
+        <button type="button" class="tab active" data-filter="all">All</button>
+        <button type="button" class="tab" data-filter="open">Open</button>
+        <button type="button" class="tab" data-filter="in_progress">In progress</button>
+        <button type="button" class="tab" data-filter="resolved">Resolved</button>
+      </div>
+
+      <div id="list"></div>
+      <div id="loading" class="card" style="text-align: center; padding: 2rem;">
+        <span class="spinner"></span> Loading your tickets…
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const listEl = document.getElementById('list');
+    const loadingEl = document.getElementById('loading');
+    const errorEl = document.getElementById('error');
+    const tabsEl = document.getElementById('tabs');
+    let allTickets = [];
+    let statusFilter = 'all';
+
+    function showError(msg) {
+      errorEl.textContent = msg || '';
+      errorEl.classList.toggle('visible', !!msg);
+    }
+
+    function formatDate(iso) {
+      try {
+        const d = new Date(iso);
+        return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } catch { return iso; }
+    }
+
+    function statusClass(s) {
+      if (s === 'resolved') return 'badge-resolved';
+      if (s === 'in_progress') return 'badge-in_progress';
+      return 'badge-open';
+    }
+
+    function statusLabel(s) {
+      if (s === 'resolved') return 'Resolved';
+      if (s === 'in_progress') return 'In progress';
+      return 'Open';
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    function filterTickets() {
+      return statusFilter === 'all'
+        ? allTickets
+        : allTickets.filter(t => t.status === statusFilter);
+    }
+
+    function renderList() {
+      const tickets = filterTickets();
+      listEl.innerHTML = '';
+      if (tickets.length === 0) {
+        listEl.innerHTML = '<div class="card empty-state">No tickets match. <a href="/">Create a ticket</a> or <a href="/chat">start a chat</a>.</div>';
+        return;
+      }
+      const wrap = document.createElement('div');
+      wrap.className = 'ticket-list';
+      tickets.forEach(t => {
+        const row = document.createElement('a');
+        row.className = 'ticket-list-item';
+        row.href = '#';
+        row.dataset.id = t.id;
+        row.innerHTML =
+          '<span class="ticket-id">#' + t.id + '</span>' +
+          '<span class="ticket-subject">' + escapeHtml(t.subject) + '</span>' +
+          '<span class="ticket-meta">' +
+            '<span class="badge ' + statusClass(t.status) + '">' + statusLabel(t.status) + '</span>' +
+            '<span style="font-size:0.85rem;color:var(--text-muted)">' + formatDate(t.created_at) + '</span>' +
+          '</span>';
+        row.addEventListener('click', function(e) {
+          e.preventDefault();
+          toggleDetail(t.id);
+        });
+
+        const detail = document.createElement('div');
+        detail.id = 'detail-' + t.id;
+        detail.className = 'detail';
+        detail.innerHTML =
+          '<div class="detail-panel">' +
+            '<div class="detail-section"><div class="detail-label">Description</div><div class="detail-value detail-desc">—</div></div>' +
+            '<div class="detail-section"><div class="detail-label">AI response</div><div class="detail-value detail-ai">—</div></div>' +
+            '<div class="detail-actions">' +
+              '<button type="button" class="btn btn-primary detail-resolve" data-id="' + t.id + '">Mark as resolved</button>' +
+            '</div>' +
+          '</div>';
+
+        const resolveBtn = detail.querySelector('.detail-resolve');
+        resolveBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          markResolved(t.id, resolveBtn);
+        });
+
+        wrap.appendChild(row);
+        wrap.appendChild(detail);
+      });
+      listEl.appendChild(wrap);
+    }
+
+    tabsEl.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', function() {
+        tabsEl.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        statusFilter = this.dataset.filter;
+        renderList();
+      });
+    });
+
+    async function loadTickets() {
+      loadingEl.style.display = 'block';
+      listEl.innerHTML = '';
+      showError('');
+      try {
+        const res = await fetch('/api/me/tickets', { credentials: 'include' });
+        if (res.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        if (!res.ok) throw new Error('Failed to load tickets');
+        allTickets = await res.json();
+        loadingEl.style.display = 'none';
+        renderList();
+        if (allTickets.length === 0) {
+          listEl.innerHTML = '<div class="card empty-state">You have no tickets yet. <a href="/">Create a ticket</a> or <a href="/chat">start a chat</a>.</div>';
+        }
+      } catch (err) {
+        loadingEl.style.display = 'none';
+        showError(err.message || 'Could not load tickets.');
+      }
+    }
+
+    async function toggleDetail(ticketId) {
+      const detail = document.getElementById('detail-' + ticketId);
+      if (!detail) return;
+      const others = listEl.querySelectorAll('.detail.visible');
+      others.forEach(el => { if (el !== detail) el.classList.remove('visible'); });
+      if (detail.classList.contains('visible')) {
+        detail.classList.remove('visible');
+        return;
+      }
+      detail.classList.add('visible');
+      const descEl = detail.querySelector('.detail-desc');
+      const aiEl = detail.querySelector('.detail-ai');
+      const btnEl = detail.querySelector('.detail-resolve');
+      if (descEl && descEl.textContent === '—') {
+        try {
+          const res = await fetch('/api/me/tickets/' + ticketId, { credentials: 'include' });
+          if (!res.ok) return;
+          const t = await res.json();
+          descEl.textContent = t.description || '—';
+          aiEl.textContent = t.ai_response || '—';
+          if (t.status === 'resolved') {
+            btnEl.textContent = 'Resolved';
+            btnEl.classList.remove('btn-primary');
+            btnEl.classList.add('btn-ghost');
+            btnEl.disabled = true;
+          }
+        } catch (_) {}
+      }
+    }
+
+    async function markResolved(ticketId, btnEl) {
+      if (btnEl.disabled) return;
+      btnEl.disabled = true;
+      try {
+        const res = await fetch('/api/me/tickets/' + ticketId + '/status', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ status: 'resolved' }),
+        });
+        if (!res.ok) throw new Error('Update failed');
+        btnEl.textContent = 'Resolved';
+        btnEl.classList.remove('btn-primary');
+        btnEl.classList.add('btn-ghost');
+        const t = allTickets.find(x => x.id === ticketId);
+        if (t) t.status = 'resolved';
+        const row = listEl.querySelector('.ticket-list-item[data-id="' + ticketId + '"]');
+        const statusSpan = row ? row.querySelector('.badge') : null;
+        if (statusSpan) {
+          statusSpan.textContent = 'Resolved';
+          statusSpan.className = 'badge badge-resolved';
+        }
+      } catch (_) {
+        btnEl.disabled = false;
+      }
+    }
+
+    loadTickets();
+  </script>
+</body>
+</html>
