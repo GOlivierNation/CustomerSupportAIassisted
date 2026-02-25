@@ -20,3 +20,6 @@ SUPERUSER_EMAILS = {
 
 # Optional: on startup, create any superuser account that doesn't exist yet (so you can log in as admin immediately)
 ADMIN_BOOTSTRAP_PASSWORD = os.getenv("ADMIN_BOOTSTRAP_PASSWORD", "").strip() or None
+
+# Optional: contact email shown when AI is not configured (e.g. support@company.com). If unset, uses customer email.
+SUPPORT_EMAIL = os.getenv("SUPPORT_EMAIL", "").strip() or None

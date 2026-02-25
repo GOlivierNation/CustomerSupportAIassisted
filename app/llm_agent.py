@@ -1,6 +1,6 @@
 from openai import OpenAI
 
-from app.config import LLM_MODEL, OPENROUTER_API_KEY
+from app.config import LLM_MODEL, OPENROUTER_API_KEY, SUPPORT_EMAIL
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
@@ -15,9 +15,10 @@ SYSTEM_PROMPT = """You are a helpful and professional customer support agent. Yo
 def get_support_response(subject: str, description: str, customer_email: str) -> str:
     """Generate an AI support response for a ticket via OpenRouter."""
     if not OPENROUTER_API_KEY:
+        contact = (SUPPORT_EMAIL or customer_email).strip()
         return (
             "Thank you for your ticket. Our AI support is not configured (missing OPENROUTER_API_KEY). "
-            "A team member will respond to you at " + customer_email + " shortly."
+            f"A team member will respond to you at {contact} shortly."
         )
 
     try:
@@ -39,10 +40,11 @@ def get_support_response(subject: str, description: str, customer_email: str) ->
         )
         return response.choices[0].message.content or ""
     except Exception as e:
+        contact = (SUPPORT_EMAIL or customer_email).strip()
         return (
             "Thank you for your ticket. We could not generate an AI response right now "
             f"(error: {str(e)}). "
-            f"A team member will respond to you at {customer_email} shortly."
+            f"A team member will respond to you at {contact} shortly."
         )
 
 
@@ -63,9 +65,10 @@ def get_chat_response(
     messages: list of {"role": "user"|"assistant", "content": "..."}
     """
     if not OPENROUTER_API_KEY:
+        contact = (SUPPORT_EMAIL or customer_email).strip()
         return (
             "Our AI chat is not configured (missing OPENROUTER_API_KEY). "
-            f"A team member will respond to you at {customer_email} shortly."
+            f"A team member will respond to you at {contact} shortly."
         )
 
     try:
@@ -87,8 +90,9 @@ def get_chat_response(
         )
         return response.choices[0].message.content or ""
     except Exception as e:
+        contact = (SUPPORT_EMAIL or customer_email).strip()
         return (
             "We could not generate a response right now "
             f"(error: {str(e)}). "
-            f"A team member will respond to you at {customer_email} shortly."
+            f"A team member will respond to you at {contact} shortly."
         )
