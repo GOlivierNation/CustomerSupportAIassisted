@@ -83,6 +83,15 @@ async def home():
     """
 
 
+@app.get("/submit", response_class=HTMLResponse)
+async def submit_page():
+    """Serve the submit-ticket form page."""
+    html_path = Path(__file__).parent / "templates" / "submit.html"
+    if html_path.exists():
+        return html_path.read_text(encoding="utf-8")
+    raise HTTPException(status_code=404, detail="Submit template not found")
+
+
 @app.post("/tickets", response_model=TicketResponse)
 async def create_ticket(data: TicketCreate):
     """Create a new support ticket and generate an AI response."""

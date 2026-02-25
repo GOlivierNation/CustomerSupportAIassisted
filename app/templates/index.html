@@ -9,10 +9,52 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/app.css">
   <style>
-    .container { max-width: 600px; margin: 0 auto; padding: 1.5rem; }
-    .result { display: none; }
-    .result.visible { display: block; }
-    .result .ai-reply { margin-top: 0.5rem; white-space: pre-wrap; line-height: 1.55; }
+    .landing {
+      position: relative;
+      min-height: calc(100vh - 52px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 1.5rem;
+      text-align: center;
+    }
+    .landing-bg {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(35, 134, 54, 0.12) 0%, transparent 55%),
+                  radial-gradient(ellipse 60% 40% at 80% 80%, rgba(88, 166, 255, 0.06) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .landing-content {
+      position: relative;
+      z-index: 1;
+      max-width: 560px;
+    }
+    .landing h1 {
+      font-size: clamp(2.25rem, 5vw, 3.25rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      color: var(--text-strong);
+      margin-bottom: 1rem;
+    }
+    .landing .tagline {
+      font-size: 1.125rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 2.5rem;
+    }
+    .landing-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: center;
+    }
+    .landing-actions .btn {
+      min-width: 160px;
+    }
   </style>
 </head>
 <body class="app-shell">
@@ -22,122 +64,25 @@
       Support
     </a>
     <div class="nav-links">
-      <a href="/" class="active">Submit ticket</a>
+      <a href="/submit">Submit ticket</a>
       <a href="/chat">Live chat</a>
       <a href="/login">Log in</a>
     </div>
   </nav>
 
-  <main class="app-main home-page">
-    <div class="home-blur-bg" aria-hidden="true"></div>
-    <div class="container home-content">
-      <div class="page-hero">
-        <h1>Customer Support</h1>
-        <p class="subtitle">Submit a ticket for an AI-generated response, or <a href="/login">log in</a> to view and manage your tickets.</p>
-      </div>
-
-      <div class="cta-grid">
-        <a href="/" class="cta-card active">
-          <span class="cta-title">Submit a ticket</span>
-          <span class="cta-desc">Get an instant AI response</span>
-        </a>
-        <a href="/login" class="cta-card">
-          <span class="cta-title">My tickets</span>
-          <span class="cta-desc">View and manage your cases</span>
-        </a>
-      </div>
-
-      <div class="card">
-        <div class="card-header">New ticket</div>
-        <form id="ticket-form">
-          <label for="email">Your email</label>
-          <input type="email" id="email" name="email" placeholder="you@example.com" required>
-
-          <label for="subject">Subject</label>
-          <input type="text" id="subject" name="subject" placeholder="Brief summary of your issue" required>
-
-          <label for="description">Message</label>
-          <textarea id="description" name="description" placeholder="Describe your issue in detail…" required></textarea>
-
-          <button type="submit" id="submit-btn" class="btn btn-primary btn-block">Submit ticket & get AI response</button>
-        </form>
-      </div>
-
-      <div class="result" id="result">
-        <div class="highlights-panel">
-          <div class="highlight-row">
-            <div class="highlight-item">
-              <div class="highlight-label">Ticket ID</div>
-              <div class="highlight-value" id="ticket-id">—</div>
-            </div>
-            <div class="highlight-item">
-              <div class="highlight-label">Status</div>
-              <div class="highlight-value">In progress</div>
-            </div>
-          </div>
-          <div class="highlight-row">
-            <div class="highlight-item" style="flex:1;min-width:100%;">
-              <div class="highlight-label">AI response</div>
-              <div class="ai-reply" id="ai-reply"></div>
-            </div>
-          </div>
+  <main class="app-main">
+    <div class="landing">
+      <div class="landing-bg" aria-hidden="true"></div>
+      <div class="landing-content">
+        <h1>We're here to help</h1>
+        <p class="tagline">Get an AI-powered response to your request, start a live chat, or sign in to view your tickets.</p>
+        <div class="landing-actions">
+          <a href="/submit" class="btn btn-primary">Submit a ticket</a>
+          <a href="/chat" class="btn btn-secondary">Live chat</a>
+          <a href="/login" class="btn btn-ghost">Log in</a>
         </div>
       </div>
-
-      <div class="error-box" id="error"></div>
     </div>
   </main>
-
-  <script>
-    const form = document.getElementById('ticket-form');
-    const result = document.getElementById('result');
-    const ticketIdEl = document.getElementById('ticket-id');
-    const aiReplyEl = document.getElementById('ai-reply');
-    const errorEl = document.getElementById('error');
-    const submitBtn = document.getElementById('submit-btn');
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      errorEl.classList.remove('visible');
-      result.classList.remove('visible');
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = '<span class="spinner"></span> Sending…';
-
-      const payload = {
-        customer_email: document.getElementById('email').value.trim(),
-        subject: document.getElementById('subject').value.trim(),
-        description: document.getElementById('description').value.trim(),
-      };
-
-      try {
-        const res = await fetch('/tickets', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        const text = await res.text();
-        let data = {};
-        if (text) {
-          try { data = JSON.parse(text); } catch { data = { detail: text.slice(0, 200) }; }
-        }
-        if (res.status === 405) throw new Error(data.detail || 'Please use the form to submit a ticket.');
-        if (!res.ok) throw new Error(data.detail || res.statusText || 'Request failed');
-        if (data.ticket_id == null && data.ticket_id !== 0) {
-          throw new Error(data.detail || 'Invalid response: no ticket ID returned.');
-        }
-
-        ticketIdEl.textContent = '#' + data.ticket_id;
-        aiReplyEl.textContent = data.ai_response ?? '';
-        result.classList.add('visible');
-        result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      } catch (err) {
-        errorEl.textContent = err.message || 'Something went wrong. Please try again.';
-        errorEl.classList.add('visible');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Submit ticket & get AI response';
-      }
-    });
-  </script>
 </body>
 </html>

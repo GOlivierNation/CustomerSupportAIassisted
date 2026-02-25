@@ -23,7 +23,7 @@
       Support
     </a>
     <div class="nav-links">
-      <a href="/">Submit ticket</a>
+      <a href="/submit">Submit ticket</a>
       <a href="/chat">Live chat</a>
       <a href="/dashboard" class="active">My tickets</a>
       <a href="/admin">Admin</a>
@@ -37,7 +37,7 @@
     <div class="dashboard-wrap">
       <div class="header">
         <h1>My tickets</h1>
-        <a href="/" class="btn btn-secondary">New ticket</a>
+        <a href="/submit" class="btn btn-secondary">New ticket</a>
       </div>
 
       <div class="error-box" id="error"></div>
@@ -104,7 +104,7 @@
       const tickets = filterTickets();
       listEl.innerHTML = '';
       if (tickets.length === 0) {
-        listEl.innerHTML = '<div class="card empty-state">No tickets match. <a href="/">Create a ticket</a> or <a href="/chat">start a chat</a>.</div>';
+        listEl.innerHTML = '<div class="card empty-state">No tickets match. <a href="/submit">Create a ticket</a> or <a href="/chat">start a chat</a>.</div>';
         return;
       }
       const wrap = document.createElement('div');
@@ -175,7 +175,7 @@
         loadingEl.style.display = 'none';
         renderList();
         if (allTickets.length === 0) {
-          listEl.innerHTML = '<div class="card empty-state">You have no tickets yet. <a href="/">Create a ticket</a> or <a href="/chat">start a chat</a>.</div>';
+          listEl.innerHTML = '<div class="card empty-state">You have no tickets yet. <a href="/submit">Create a ticket</a> or <a href="/chat">start a chat</a>.</div>';
         }
       } catch (err) {
         loadingEl.style.display = 'none';
