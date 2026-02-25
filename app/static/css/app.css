@@ -260,6 +260,16 @@ body {
   background: var(--surface-hover);
 }
 
+.btn-danger {
+  background: var(--danger-subtle);
+  color: var(--danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--danger);
+  color: #fff;
+}
+
 .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .btn-block { width: 100%; }

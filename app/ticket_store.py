@@ -121,5 +121,53 @@ class TicketStore:
         ticket.updated_at = datetime.now(timezone.utc)
         return ticket
 
+    def update(
+        self,
+        ticket_id: str,
+        *,
+        subject: Optional[str] = None,
+        description: Optional[str] = None,
+        status: Optional[TicketStatus] = None,
+        ai_response: Optional[str] = None,
+    ) -> Optional[Ticket]:
+        """Update ticket fields. None means leave unchanged."""
+        ticket = self.get(ticket_id)
+        if not ticket:
+            return None
+        if use_supabase():
+            sb = get_supabase()
+            payload = {"updated_at": datetime.now(timezone.utc).isoformat()}
+            if subject is not None:
+                payload["subject"] = subject
+            if description is not None:
+                payload["description"] = description
+            if status is not None:
+                payload["status"] = status.value
+            if ai_response is not None:
+                payload["ai_response"] = ai_response
+            sb.table("tickets").update(payload).eq("id", ticket_id).execute()
+            return self.get(ticket_id)
+        if subject is not None:
+            ticket.subject = subject
+        if description is not None:
+            ticket.description = description
+        if status is not None:
+            ticket.status = status
+        if ai_response is not None:
+            ticket.ai_response = ai_response
+        ticket.updated_at = datetime.now(timezone.utc)
+        return ticket
+
+    def delete(self, ticket_id: str) -> bool:
+        """Delete a ticket. Returns True if it existed and was removed."""
+        if use_supabase():
+            sb = get_supabase()
+            res = sb.table("tickets").delete().eq("id", ticket_id).execute()
+            return res.data is not None and len(res.data) > 0
+        if ticket_id in self._tickets:
+            del self._tickets[ticket_id]
+            return True
+        return False
+
 
 store = TicketStore()

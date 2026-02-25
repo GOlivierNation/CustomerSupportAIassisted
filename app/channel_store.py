@@ -115,5 +115,17 @@ class ChannelStore:
             reverse=True,
         )
 
+    def delete(self, channel_id: str) -> bool:
+        """Delete a channel and its messages. Returns True if it existed."""
+        if use_supabase():
+            sb = get_supabase()
+            sb.table("channel_messages").delete().eq("channel_id", channel_id).execute()
+            res = sb.table("channels").delete().eq("id", channel_id).execute()
+            return res.data is not None and len(res.data) > 0
+        if channel_id in self._channels:
+            del self._channels[channel_id]
+            return True
+        return False
+
 
 channel_store = ChannelStore()

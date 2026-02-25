@@ -1,5 +1,7 @@
 """User store: email -> hashed password. Uses Supabase when configured, else in-memory."""
 
+from typing import List
+
 from passlib.context import CryptContext
 
 from app.db import get_supabase, use_supabase
@@ -51,3 +53,26 @@ def verify(email: str, password: str) -> bool:
     if not hashed:
         return False
     return _ctx.verify(pwd, hashed)
+
+
+def list_all() -> List[str]:
+    """List all user emails (for superuser admin)."""
+    if use_supabase():
+        sb = get_supabase()
+        res = sb.table("users").select("email").order("email").execute()
+        return [row["email"] for row in (res.data or [])]
+    return sorted(_users.keys())
+
+
+def delete_user(email: str) -> bool:
+    """Delete a user by email. Returns True if the user existed and was removed. Also removes their sessions."""
+    key = email.strip().lower()
+    if use_supabase():
+        sb = get_supabase()
+        sb.table("sessions").delete().eq("customer_email", key).execute()
+        res = sb.table("users").delete().eq("email", key).execute()
+        return res.data is not None and len(res.data) > 0
+    if key in _users:
+        del _users[key]
+        return True
+    return False

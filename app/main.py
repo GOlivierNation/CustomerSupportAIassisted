@@ -11,6 +11,7 @@ from app.auth import (
     destroy_session,
     get_current_customer_email,
     require_customer,
+    require_superuser,
 )
 from app.channel_store import channel_store
 from app.llm_agent import get_chat_response, get_support_response
@@ -20,16 +21,36 @@ from app.models import (
     SendMessageRequest,
     TicketCreate,
     TicketResponse,
+    TicketUpdateRequest,
     UpdateTicketStatusRequest,
 )
 from app.ticket_store import store
-from app.user_store import register as register_user, verify as verify_user
+from app.user_store import (
+    delete_user as user_store_delete,
+    list_all as user_list_all,
+    register as register_user,
+    verify as verify_user,
+)
 
 app = FastAPI(
     title="Customer Support AI Agent",
     description="Create tickets and get AI-powered responses",
     version="1.0.0",
 )
+
+
+@app.on_event("startup")
+async def bootstrap_superusers():
+    """Create superuser accounts that don't exist yet when ADMIN_BOOTSTRAP_PASSWORD is set."""
+    from app.config import ADMIN_BOOTSTRAP_PASSWORD, SUPERUSER_EMAILS
+    if not ADMIN_BOOTSTRAP_PASSWORD or not SUPERUSER_EMAILS:
+        return
+    for email in SUPERUSER_EMAILS:
+        try:
+            register_user(email, ADMIN_BOOTSTRAP_PASSWORD)
+        except Exception:
+            pass  # already exists or store error; ignore
+
 
 @app.exception_handler(405)
 async def method_not_allowed_handler(request: Request, _exc):
@@ -388,3 +409,220 @@ async def send_message(channel_id: str, body: SendMessageRequest):
         "assistant_message": ai_reply,
         "messages": updated.messages if updated else [],
     }
+
+
+# --- Superuser admin dashboard ---
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_page(email: str = Depends(require_superuser)):
+    """Serve the superuser admin dashboard (tickets, channels, users CRUD)."""
+    html_path = Path(__file__).parent / "templates" / "admin.html"
+    if html_path.exists():
+        return html_path.read_text(encoding="utf-8")
+    raise HTTPException(status_code=404, detail="Admin template not found")
+
+
+@app.get("/admin/api/tickets")
+async def admin_list_tickets(_: str = Depends(require_superuser)):
+    """List all tickets for admin."""
+    tickets = store.list_all()
+    return [
+        {
+            "id": t.id,
+            "subject": t.subject,
+            "description": t.description,
+            "customer_email": t.customer_email,
+            "status": t.status.value,
+            "ai_response": t.ai_response or "",
+            "created_at": t.created_at.isoformat(),
+            "updated_at": t.updated_at.isoformat(),
+        }
+        for t in tickets
+    ]
+
+
+@app.post("/admin/api/tickets", response_model=TicketResponse)
+async def admin_create_ticket(data: TicketCreate, _: str = Depends(require_superuser)):
+    """Create a ticket (admin) and generate AI response."""
+    try:
+        ticket = store.create(data)
+        ai_response = get_support_response(
+            ticket.subject, ticket.description, ticket.customer_email
+        )
+        store.update_ai_response(ticket.id, ai_response)
+        t = store.get(ticket.id)
+        if not t:
+            raise HTTPException(status_code=500, detail="Failed to retrieve created ticket")
+        return TicketResponse(
+            ticket_id=t.id,
+            subject=t.subject,
+            description=t.description,
+            status=t.status,
+            ai_response=t.ai_response or "",
+            created_at=t.created_at,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e) if str(e) else "Failed to create ticket")
+
+
+@app.get("/admin/api/tickets/{ticket_id}")
+async def admin_get_ticket(ticket_id: str, _: str = Depends(require_superuser)):
+    """Get one ticket for admin."""
+    ticket = store.get(ticket_id)
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return {
+        "id": ticket.id,
+        "subject": ticket.subject,
+        "description": ticket.description,
+        "customer_email": ticket.customer_email,
+        "status": ticket.status.value,
+        "ai_response": ticket.ai_response or "",
+        "created_at": ticket.created_at.isoformat(),
+        "updated_at": ticket.updated_at.isoformat(),
+    }
+
+
+@app.patch("/admin/api/tickets/{ticket_id}")
+async def admin_update_ticket(
+    ticket_id: str,
+    body: TicketUpdateRequest,
+    _: str = Depends(require_superuser),
+):
+    """Update a ticket (admin)."""
+    ticket = store.get(ticket_id)
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    payload = {}
+    if body.subject is not None:
+        payload["subject"] = body.subject
+    if body.description is not None:
+        payload["description"] = body.description
+    if body.status is not None:
+        payload["status"] = body.status
+    if body.ai_response is not None:
+        payload["ai_response"] = body.ai_response
+    if not payload:
+        return {
+            "id": ticket.id,
+            "subject": ticket.subject,
+            "description": ticket.description,
+            "customer_email": ticket.customer_email,
+            "status": ticket.status.value,
+            "ai_response": ticket.ai_response or "",
+            "created_at": ticket.created_at.isoformat(),
+            "updated_at": ticket.updated_at.isoformat(),
+        }
+    updated = store.update(
+        ticket_id,
+        subject=body.subject,
+        description=body.description,
+        status=body.status,
+        ai_response=body.ai_response,
+    )
+    if not updated:
+        raise HTTPException(status_code=500, detail="Failed to update ticket")
+    return {
+        "id": updated.id,
+        "subject": updated.subject,
+        "description": updated.description,
+        "customer_email": updated.customer_email,
+        "status": updated.status.value,
+        "ai_response": updated.ai_response or "",
+        "created_at": updated.created_at.isoformat(),
+        "updated_at": updated.updated_at.isoformat(),
+    }
+
+
+@app.delete("/admin/api/tickets/{ticket_id}")
+async def admin_delete_ticket(ticket_id: str, _: str = Depends(require_superuser)):
+    """Delete a ticket (admin)."""
+    if not store.delete(ticket_id):
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return {"ok": True, "id": ticket_id}
+
+
+@app.get("/admin/api/channels")
+async def admin_list_channels(_: str = Depends(require_superuser)):
+    """List all channels for admin."""
+    channels = channel_store.list_all()
+    return [
+        {
+            "id": c.id,
+            "customer_email": c.customer_email,
+            "subject": c.subject or "",
+            "message_count": len(c.messages),
+            "created_at": c.created_at.isoformat(),
+            "updated_at": c.updated_at.isoformat(),
+        }
+        for c in channels
+    ]
+
+
+@app.get("/admin/api/channels/{channel_id}")
+async def admin_get_channel(channel_id: str, _: str = Depends(require_superuser)):
+    """Get one channel with messages for admin."""
+    channel = channel_store.get(channel_id)
+    if not channel:
+        raise HTTPException(status_code=404, detail="Channel not found")
+    return {
+        "id": channel.id,
+        "customer_email": channel.customer_email,
+        "subject": channel.subject or "",
+        "messages": [
+            {"role": m.role, "content": m.content, "created_at": m.created_at.isoformat()}
+            for m in channel.messages
+        ],
+        "created_at": channel.created_at.isoformat(),
+        "updated_at": channel.updated_at.isoformat(),
+    }
+
+
+@app.post("/admin/api/channels", response_model=ChannelResponse)
+async def admin_create_channel(data: ChannelCreate, _: str = Depends(require_superuser)):
+    """Create a channel (admin)."""
+    channel = channel_store.create(data)
+    if data.initial_message:
+        messages_for_llm = [{"role": "user", "content": data.initial_message.strip()}]
+        ai_reply = get_chat_response(
+            messages_for_llm,
+            channel.customer_email,
+            channel.subject,
+        )
+        channel_store.add_message(channel.id, "assistant", ai_reply)
+    ch = channel_store.get(channel.id)
+    if not ch:
+        raise HTTPException(status_code=500, detail="Failed to retrieve created channel")
+    return ChannelResponse(
+        channel_id=ch.id,
+        customer_email=ch.customer_email,
+        subject=ch.subject,
+        messages=ch.messages,
+        created_at=ch.created_at,
+        updated_at=ch.updated_at,
+    )
+
+
+@app.delete("/admin/api/channels/{channel_id}")
+async def admin_delete_channel(channel_id: str, _: str = Depends(require_superuser)):
+    """Delete a channel (admin)."""
+    if not channel_store.delete(channel_id):
+        raise HTTPException(status_code=404, detail="Channel not found")
+    return {"ok": True, "id": channel_id}
+
+
+@app.get("/admin/api/users")
+async def admin_list_users(_: str = Depends(require_superuser)):
+    """List all users for admin."""
+    emails = user_list_all()
+    return [{"email": e} for e in emails]
+
+
+@app.delete("/admin/api/users/{email:path}")
+async def admin_delete_user(email: str, _: str = Depends(require_superuser)):
+    """Delete a user by email (admin)."""
+    if not user_store_delete(email):
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"ok": True, "email": email}

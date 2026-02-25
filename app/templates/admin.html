@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Customer Support</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/app.css">
+  <style>
+    .admin-wrap { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
+    .admin-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem; }
+    .admin-header h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; color: var(--text-strong); }
+    .admin-tabs { display: flex; gap: 0.25rem; margin-bottom: 1rem; }
+    .admin-tab { padding: 0.5rem 1rem; font-size: 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-muted); cursor: pointer; }
+    .admin-tab:hover { color: var(--text); background: var(--surface-hover); }
+    .admin-tab.active { background: var(--accent-blue-subtle); color: var(--accent-blue); border-color: var(--accent-blue); }
+    .admin-panel { display: none; }
+    .admin-panel.active { display: block; }
+    .admin-table-wrap { overflow-x: auto; }
+    .admin-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    .admin-table th, .admin-table td { padding: 0.6rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+    .admin-table th { color: var(--text-muted); font-weight: 500; }
+    .admin-table tr:hover td { background: var(--surface); }
+    .admin-actions { display: flex; gap: 0.5rem; }
+    .admin-actions .btn { padding: 0.35rem 0.6rem; font-size: 0.8rem; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 200; padding: 1rem; }
+    .modal-overlay.visible { display: flex; }
+    .modal { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-lg); max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto; }
+    .modal-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .modal-header h2 { font-size: 1.1rem; font-weight: 600; }
+    .modal-close { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.25rem; padding: 0.25rem; line-height: 1; }
+    .modal-close:hover { color: var(--text); }
+    .modal-body { padding: 1.25rem; }
+    .modal-body label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.35rem; }
+    .modal-body input, .modal-body select, .modal-body textarea { width: 100%; padding: 0.5rem 0.75rem; margin-bottom: 1rem; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg); color: var(--text); font-family: inherit; }
+    .modal-body textarea { min-height: 80px; resize: vertical; }
+    .modal-footer { padding: 0 1.25rem 1.25rem; display: flex; justify-content: flex-end; gap: 0.5rem; }
+    .badge-open { background: var(--accent-subtle); color: var(--accent); }
+    .badge-in_progress { background: var(--warning-subtle); color: var(--warning); }
+    .badge-resolved { background: var(--success-subtle); color: var(--success); }
+    .empty-state { text-align: center; padding: 2rem; color: var(--text-muted); }
+  </style>
+</head>
+<body class="app-shell">
+  <nav class="app-nav">
+    <a class="brand" href="/">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Support
+    </a>
+    <div class="nav-links">
+      <a href="/">Submit ticket</a>
+      <a href="/chat">Live chat</a>
+      <a href="/dashboard">My tickets</a>
+      <a href="/admin" class="active">Admin</a>
+      <form method="post" action="/logout" style="display:inline;">
+        <button type="submit">Log out</button>
+      </form>
+    </div>
+  </nav>
+
+  <main class="app-main">
+    <div class="admin-wrap">
+      <div class="admin-header">
+        <h1>Superuser dashboard</h1>
+      </div>
+
+      <div class="error-box" id="error"></div>
+
+      <div class="admin-tabs">
+        <button type="button" class="admin-tab active" data-panel="tickets">Tickets</button>
+        <button type="button" class="admin-tab" data-panel="channels">Channels</button>
+        <button type="button" class="admin-tab" data-panel="users">Users</button>
+      </div>
+
+      <div id="panel-tickets" class="admin-panel active">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <span>Tickets</span>
+          <button type="button" class="btn btn-primary" id="ticket-create-btn">Create ticket</button>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="tickets-table">
+            <thead><tr><th>ID</th><th>Subject</th><th>Customer</th><th>Status</th><th>Created</th><th></th></tr></thead>
+            <tbody id="tickets-tbody"></tbody>
+          </table>
+        </div>
+        <div id="tickets-loading" class="empty-state"><span class="spinner"></span> Loading…</div>
+      </div>
+
+      <div id="panel-channels" class="admin-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <span>Chat channels</span>
+          <button type="button" class="btn btn-primary" id="channel-create-btn">Create channel</button>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="channels-table">
+            <thead><tr><th>ID</th><th>Customer</th><th>Subject</th><th>Messages</th><th>Updated</th><th></th></tr></thead>
+            <tbody id="channels-tbody"></tbody>
+          </table>
+        </div>
+        <div id="channels-loading" class="empty-state"><span class="spinner"></span> Loading…</div>
+      </div>
+
+      <div id="panel-users" class="admin-panel">
+        <div style="margin-bottom:1rem;">Registered users (delete only; new users register via the app)</div>
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="users-table">
+            <thead><tr><th>Email</th><th></th></tr></thead>
+            <tbody id="users-tbody"></tbody>
+          </table>
+        </div>
+        <div id="users-loading" class="empty-state"><span class="spinner"></span> Loading…</div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Ticket create/edit modal -->
+  <div class="modal-overlay" id="ticket-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="ticket-modal-title">Create ticket</h2>
+        <button type="button" class="modal-close" data-close="ticket-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="ticket-id" />
+        <label for="ticket-subject">Subject</label>
+        <input type="text" id="ticket-subject" required maxlength="200" placeholder="Brief subject" />
+        <label for="ticket-description">Description</label>
+        <textarea id="ticket-description" required placeholder="Full description"></textarea>
+        <label for="ticket-email">Customer email</label>
+        <input type="email" id="ticket-email" required placeholder="customer@example.com" />
+        <label for="ticket-status">Status</label>
+        <select id="ticket-status">
+          <option value="open">Open</option>
+          <option value="in_progress">In progress</option>
+          <option value="resolved">Resolved</option>
+        </select>
+        <label for="ticket-ai">AI response</label>
+        <textarea id="ticket-ai" placeholder="AI-generated or manual response"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-close="ticket-modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="ticket-save-btn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Channel create modal -->
+  <div class="modal-overlay" id="channel-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Create channel</h2>
+        <button type="button" class="modal-close" data-close="channel-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label for="channel-email">Customer email</label>
+        <input type="email" id="channel-email" required placeholder="customer@example.com" />
+        <label for="channel-subject">Subject</label>
+        <input type="text" id="channel-subject" placeholder="Topic (optional)" />
+        <label for="channel-initial">Initial message (optional)</label>
+        <textarea id="channel-initial" placeholder="First user message; AI will reply"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-close="channel-modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="channel-save-btn">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const api = (path, opts = {}) => fetch(path, { credentials: 'include', ...opts });
+    const errorEl = document.getElementById('error');
+
+    function showError(msg) {
+      errorEl.textContent = msg || '';
+      errorEl.classList.toggle('visible', !!msg);
+    }
+
+    function formatDate(iso) {
+      try {
+        const d = new Date(iso);
+        return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } catch { return iso; }
+    }
+
+    function statusBadge(s) {
+      const c = s === 'resolved' ? 'badge-resolved' : s === 'in_progress' ? 'badge-in_progress' : 'badge-open';
+      const l = s === 'resolved' ? 'Resolved' : s === 'in_progress' ? 'In progress' : 'Open';
+      return '<span class="badge ' + c + '">' + l + '</span>';
+    }
+
+    document.querySelectorAll('.admin-tab').forEach(tab => {
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
+        this.classList.add('active');
+        document.getElementById('panel-' + this.dataset.panel).classList.add('active');
+        if (this.dataset.panel === 'tickets') loadTickets();
+        if (this.dataset.panel === 'channels') loadChannels();
+        if (this.dataset.panel === 'users') loadUsers();
+      });
+    });
+
+    document.querySelectorAll('[data-close]').forEach(btn => {
+      btn.addEventListener('click', () => document.getElementById(btn.dataset.close).classList.remove('visible'));
+    });
+
+    // --- Tickets ---
+    async function loadTickets() {
+      const tbody = document.getElementById('tickets-tbody');
+      const loading = document.getElementById('tickets-loading');
+      tbody.innerHTML = '';
+      loading.style.display = 'block';
+      try {
+        const res = await api('/admin/api/tickets');
+        if (res.status === 401) { window.location.href = '/login'; return; }
+        if (res.status === 403) { showError('Access denied. Superuser only.'); return; }
+        if (!res.ok) throw new Error('Failed to load tickets');
+        const list = await res.json();
+        loading.style.display = 'none';
+        if (list.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No tickets</td></tr>';
+          return;
+        }
+        list.forEach(t => {
+          const tr = document.createElement('tr');
+          tr.innerHTML =
+            '<td><code>' + t.id + '</code></td>' +
+            '<td>' + escapeHtml(t.subject) + '</td>' +
+            '<td>' + escapeHtml(t.customer_email) + '</td>' +
+            '<td>' + statusBadge(t.status) + '</td>' +
+            '<td>' + formatDate(t.created_at) + '</td>' +
+            '<td><div class="admin-actions"><button type="button" class="btn btn-secondary btn-edit-ticket" data-id="' + t.id + '">Edit</button><button type="button" class="btn btn-danger btn-delete-ticket" data-id="' + t.id + '">Delete</button></div></td>';
+          tr.querySelector('.btn-edit-ticket').addEventListener('click', () => openTicketEdit(t.id));
+          tr.querySelector('.btn-delete-ticket').addEventListener('click', () => deleteTicket(t.id, tr));
+          tbody.appendChild(tr);
+        });
+      } catch (e) {
+        loading.style.display = 'none';
+        showError(e.message || 'Could not load tickets');
+      }
+    }
+
+    function escapeHtml(s) {
+      const d = document.createElement('div');
+      d.textContent = s == null ? '' : s;
+      return d.innerHTML;
+    }
+
+    document.getElementById('ticket-create-btn').addEventListener('click', () => {
+      document.getElementById('ticket-modal-title').textContent = 'Create ticket';
+      document.getElementById('ticket-id').value = '';
+      document.getElementById('ticket-subject').value = '';
+      document.getElementById('ticket-description').value = '';
+      document.getElementById('ticket-email').value = '';
+      document.getElementById('ticket-status').value = 'open';
+      document.getElementById('ticket-ai').value = '';
+      document.getElementById('ticket-modal').classList.add('visible');
+    });
+
+    async function openTicketEdit(id) {
+      try {
+        const res = await api('/admin/api/tickets/' + id);
+        if (!res.ok) throw new Error('Failed to load ticket');
+        const t = await res.json();
+        document.getElementById('ticket-modal-title').textContent = 'Edit ticket';
+        document.getElementById('ticket-id').value = t.id;
+        document.getElementById('ticket-subject').value = t.subject;
+        document.getElementById('ticket-description').value = t.description;
+        document.getElementById('ticket-email').value = t.customer_email;
+        document.getElementById('ticket-status').value = t.status;
+        document.getElementById('ticket-ai').value = t.ai_response || '';
+        document.getElementById('ticket-modal').classList.add('visible');
+      } catch (e) {
+        showError(e.message);
+      }
+    }
+
+    document.getElementById('ticket-save-btn').addEventListener('click', async () => {
+      const id = document.getElementById('ticket-id').value;
+      const subject = document.getElementById('ticket-subject').value.trim();
+      const description = document.getElementById('ticket-description').value.trim();
+      const customer_email = document.getElementById('ticket-email').value.trim();
+      const status = document.getElementById('ticket-status').value;
+      const ai_response = document.getElementById('ticket-ai').value.trim();
+      showError('');
+      try {
+        if (id) {
+          const res = await api('/admin/api/tickets/' + id, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subject, description, status, ai_response: ai_response || null }),
+          });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || 'Update failed');
+          }
+        } else {
+          const res = await api('/admin/api/tickets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subject, description, customer_email }),
+          });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || 'Create failed');
+          }
+        }
+        document.getElementById('ticket-modal').classList.remove('visible');
+        loadTickets();
+      } catch (e) {
+        showError(e.message);
+      }
+    });
+
+    async function deleteTicket(id, row) {
+      if (!confirm('Delete this ticket?')) return;
+      try {
+        const res = await api('/admin/api/tickets/' + id, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Delete failed');
+        row.remove();
+      } catch (e) {
+        showError(e.message);
+      }
+    }
+
+    // --- Channels ---
+    async function loadChannels() {
+      const tbody = document.getElementById('channels-tbody');
+      const loading = document.getElementById('channels-loading');
+      tbody.innerHTML = '';
+      loading.style.display = 'block';
+      try {
+        const res = await api('/admin/api/channels');
+        if (res.status === 401) { window.location.href = '/login'; return; }
+        if (res.status === 403) { showError('Access denied.'); return; }
+        if (!res.ok) throw new Error('Failed to load channels');
+        const list = await res.json();
+        loading.style.display = 'none';
+        if (list.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No channels</td></tr>';
+          return;
+        }
+        list.forEach(c => {
+          const tr = document.createElement('tr');
+          tr.innerHTML =
+            '<td><code>' + c.id + '</code></td>' +
+            '<td>' + escapeHtml(c.customer_email) + '</td>' +
+            '<td>' + escapeHtml(c.subject || '—') + '</td>' +
+            '<td>' + c.message_count + '</td>' +
+            '<td>' + formatDate(c.updated_at) + '</td>' +
+            '<td><div class="admin-actions"><button type="button" class="btn btn-danger btn-delete-channel" data-id="' + c.id + '">Delete</button></div></td>';
+          tr.querySelector('.btn-delete-channel').addEventListener('click', () => deleteChannel(c.id, tr));
+          tbody.appendChild(tr);
+        });
+      } catch (e) {
+        loading.style.display = 'none';
+        showError(e.message || 'Could not load channels');
+      }
+    }
+
+    document.getElementById('channel-create-btn').addEventListener('click', () => {
+      document.getElementById('channel-email').value = '';
+      document.getElementById('channel-subject').value = '';
+      document.getElementById('channel-initial').value = '';
+      document.getElementById('channel-modal').classList.add('visible');
+    });
+
+    document.getElementById('channel-save-btn').addEventListener('click', async () => {
+      const customer_email = document.getElementById('channel-email').value.trim();
+      const subject = document.getElementById('channel-subject').value.trim() || null;
+      const initial_message = document.getElementById('channel-initial').value.trim() || null;
+      showError('');
+      try {
+        const res = await api('/admin/api/channels', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ customer_email, subject, initial_message }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || 'Create failed');
+        }
+        document.getElementById('channel-modal').classList.remove('visible');
+        loadChannels();
+      } catch (e) {
+        showError(e.message);
+      }
+    });
+
+    async function deleteChannel(id, row) {
+      if (!confirm('Delete this channel and all messages?')) return;
+      try {
+        const res = await api('/admin/api/channels/' + id, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Delete failed');
+        row.remove();
+      } catch (e) {
+        showError(e.message);
+      }
+    }
+
+    // --- Users ---
+    async function loadUsers() {
+      const tbody = document.getElementById('users-tbody');
+      const loading = document.getElementById('users-loading');
+      tbody.innerHTML = '';
+      loading.style.display = 'block';
+      try {
+        const res = await api('/admin/api/users');
+        if (res.status === 401) { window.location.href = '/login'; return; }
+        if (res.status === 403) { showError('Access denied.'); return; }
+        if (!res.ok) throw new Error('Failed to load users');
+        const list = await res.json();
+        loading.style.display = 'none';
+        if (list.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="2" class="empty-state">No users</td></tr>';
+          return;
+        }
+        list.forEach(u => {
+          const tr = document.createElement('tr');
+          const email = u.email;
+          tr.innerHTML =
+            '<td>' + escapeHtml(email) + '</td>' +
+            '<td><div class="admin-actions"><button type="button" class="btn btn-danger btn-delete-user" data-email="' + escapeHtml(email) + '">Delete</button></div></td>';
+          tr.querySelector('.btn-delete-user').addEventListener('click', () => deleteUser(email, tr));
+          tbody.appendChild(tr);
+        });
+      } catch (e) {
+        loading.style.display = 'none';
+        showError(e.message || 'Could not load users');
+      }
+    }
+
+    async function deleteUser(email, row) {
+      if (!confirm('Delete user ' + email + '? This cannot be undone.')) return;
+      try {
+        const res = await api('/admin/api/users/' + encodeURIComponent(email), { method: 'DELETE' });
+        if (!res.ok) throw new Error('Delete failed');
+        row.remove();
+      } catch (e) {
+        showError(e.message);
+      }
+    }
+
+    loadTickets();
+  </script>
+</body>
+</html>

@@ -2,6 +2,8 @@
 
 Customers can create support tickets and receive AI-generated responses.
 
+**Live demo:** [https://customersupportaiassisted.onrender.com/](https://customersupportaiassisted.onrender.com/)
+
 ## Features
 
 - **Create a ticket**: Submit subject, description, and email.
@@ -132,20 +134,36 @@ The app is a **FastAPI** app run with **Uvicorn**. You can deploy it to any host
 ### Deploy on Render
 
 1. Push your code to **GitHub**.
-2. Go to [render.com](https://render.com) → **New** → **Web Service**.
+2. Go to [render.com](https://render.com) → **New** → **Web Service** (not "Static Site" – this app is a Python server; Static Site requires a Publish Directory and is for front-end builds only).
 3. Connect your GitHub repo and choose the repo/branch.
 4. Configure:
    - **Environment**: Python 3
    - **Build command**: `pip install -r requirements.txt`
    - **Start command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-   - **Root directory**: leave blank if the repo root is the project root.
-5. **Environment** tab: add `OPENROUTER_API_KEY`, and optionally `SUPABASE_URL`, `SUPABASE_KEY`.
+   - **Root directory**: **leave blank** – `app/` and `requirements.txt` are at the repo root.
+5. **Environment** tab: add `OPENROUTER_API_KEY` (required), and optionally `SUPABASE_URL`, `SUPABASE_KEY`.
 6. **Create Web Service**. Your app will be at `https://your-service.onrender.com`.
+
+   Alternatively, use the included **Blueprint**: **New** → **Blueprint** → connect the repo; Render will read `render.yaml` and create the service. You still must set `OPENROUTER_API_KEY` (and optional Supabase vars) in the service **Environment** tab.
+
+#### If you see "Not Found" or the app doesn’t load
+
+- **Root directory**: In the Render service **Settings**, ensure **Root Directory** is empty. If it’s set to e.g. `customer_support_ai`, clear it (this repo has no such subfolder).
+- **Logs**: In the Render dashboard, open your service → **Logs**. If the app crashes on startup (e.g. missing `OPENROUTER_API_KEY` or import error), fix the error and redeploy.
+- **Env vars**: Confirm `OPENROUTER_API_KEY` is set in **Environment**; without it the app may fail at startup.
+
+### Superuser admin dashboard
+
+Admins can manage tickets, chat channels, and users at **/admin** (create, update, delete).
+
+1. Set **SUPERUSER_EMAILS** in `.env` or your host’s environment to a comma-separated list of allowed emails, e.g. `SUPERUSER_EMAILS=admin@example.com`.
+2. Log in with one of those accounts, then open **/admin**. Only listed emails can access the dashboard; others get 403.
 
 ### What to set in production
 
 - **Required**: `OPENROUTER_API_KEY` (from [openrouter.ai/keys](https://openrouter.ai/keys)).
 - **Recommended**: `SUPABASE_URL` and `SUPABASE_KEY` so tickets, users, and chat are persisted.
+- **Optional**: `SUPERUSER_EMAILS` (comma-separated emails) for admin dashboard access.
 - Do **not** commit `.env`; use each platform’s “Environment variables” or “Secrets” UI.
 
 ## Pushing to GitHub

@@ -91,3 +91,25 @@ async def require_customer(
             headers={"Location": "/login"},
         )
     return email
+
+
+def is_superuser(email: str) -> bool:
+    """Return True if the given email is a configured superuser."""
+    from app.config import SUPERUSER_EMAILS
+    return email.strip().lower() in SUPERUSER_EMAILS
+
+
+async def require_superuser(
+    customer_session: Optional[str] = Cookie(default=None, alias=SESSION_COOKIE_NAME),
+) -> str:
+    """Dependency: require a valid session and superuser role; 403 if not superuser."""
+    email = get_email_for_session(customer_session)
+    if not email:
+        raise HTTPException(
+            status_code=401,
+            detail="Please log in to access the admin dashboard",
+            headers={"Location": "/login"},
+        )
+    if not is_superuser(email):
+        raise HTTPException(status_code=403, detail="Access denied. Superuser only.")
+    return email

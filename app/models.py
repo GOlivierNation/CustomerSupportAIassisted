@@ -30,6 +30,14 @@ class UpdateTicketStatusRequest(BaseModel):
     status: TicketStatus
 
 
+class TicketUpdateRequest(BaseModel):
+    """Admin: optional fields to update a ticket."""
+    subject: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = Field(None, min_length=1)
+    status: Optional[TicketStatus] = None
+    ai_response: Optional[str] = None
+
+
 class Ticket(BaseModel):
     id: str
     subject: str
